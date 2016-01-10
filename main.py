@@ -18,25 +18,34 @@ import constants as c
 
 class DistanceField(object):
     """Generates an island (currently iceberg) as a distance field.  This can be used either
-    standalone, like in this example, or at the start of a pymcworldgen pipeline that uses 
+    standalone, like in this example, or at the start of a pymcworldgen pipeline that uses
     multiple step.s
     """
 
     def get_block(self, x, z, y):
         """For any point in the map, return the type of block at that location.
-        
+
         y (int) represents altitude, positive is up and negative is down.
-        x and z (int) are the lattitude and logitude in the map. 
-        """ 
+        x and z (int) are the lattitude and logitude in the map.
+        """
 
         # Add simple noise to the coordinates to make it less rigid!
-        nx = x + 2*math.sin(z/4.7)
-        nz = z + 2*math.cos(x/5.9)
+        # nx = x + 2*math.sin(z/4.7)
+        # nz = z + 2*math.cos(x/5.9)
+        # ny = y + math.sin(0.75 + x/7.8 + z/9.1)
+
+        nx = x + 2*math.sin(z/4.7) + math.cos(y)*math.sin(x/4.7)
+        nz = z + 6*math.cos(x/5.9) + math.sin(y)*math.sin(z/1.7) - math.sin(x)*math.sin(z/3.7)
         ny = y + math.sin(0.75 + x/7.8 + z/9.1)
 
         # Manhattan distance field to center of map: floating iceberg.
-        if abs(nx) + abs(nz) + abs(ny*8) < 64:
-            return c.MAT_SNOW
+        # if abs(nx) + abs(nz) + abs(ny*8) < 32:
+        #     return c.MAT_DIRT
+
+        if math.sqrt(nx*nx + nz*nz + 64*abs(ny)) < ny*ny/8 + 64 and y < 0:
+            return c.MAT_DIRT
+        # if abs(nx) + abs(ny) < 32 or abs(nz) + abs(ny) < 32 or abs(nx) + abs(nz) < 32:
+        #     return c.MAT_DIRT
 
         # Anything that's not solid but under the sea level?
         if y < 0:
@@ -47,7 +56,7 @@ class DistanceField(object):
     def getChunk(self, cx, cz):
         """Implements the pymcworldgen layer API, returning a chunk of 16x16 with height 128
         that can be stored on disk.
-        
+
         (You shouldn't need to change this.)
         """
 
@@ -57,7 +66,7 @@ class DistanceField(object):
         chunk = layer.Chunk(cx, cz)
         for x in range(cx * WIDTH, (cx+1) * WIDTH):
             for z in range(cz * WIDTH, (cz+1) * WIDTH):
-                for y in range(-HALF_HEIGHT, +HALF_HEIGHT): 
+                for y in range(-HALF_HEIGHT, +HALF_HEIGHT):
                     chunk.blocks[x%WIDTH][z%WIDTH][y+HALF_HEIGHT] = self.get_block(x, z, y)
         return chunk
 
@@ -81,7 +90,7 @@ def generate():
         for chunkcol in range(-worldsizez, worldsizez):
             currchunk = pipeline.getChunk(chunkrow, chunkcol)
             saveutils.setWorldChunk(island, currchunk, chunkrow, chunkcol)
-    
+
     saveutils.saveWorld(island)
     print("Processing took", start_time - time.clock(), "seconds.")
 
